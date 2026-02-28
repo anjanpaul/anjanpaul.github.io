@@ -1,9 +1,11 @@
 name: Build and Deploy to ECS
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v1.0.0)'
+        required: true
 
 env:
   AWS_REGION: ap-southeast-1
@@ -20,10 +22,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get release tag
-        id: tag
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -38,7 +36,7 @@ jobs:
       - name: Build, Tag & Push image to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ steps.tag.outputs.version }}
+          IMAGE_TAG: ${{ github.event.inputs.version }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -58,4 +56,4 @@ jobs:
             --cluster $ECS_CLUSTER \
             --services $ECS_SERVICE \
             --region $AWS_REGION
-          echo "Deployment complete with tag: ${{ steps.tag.outputs.version }}"
+          echo "Deployment complete with tag: ${{ github.event.inputs.version }}"
